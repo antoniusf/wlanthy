@@ -13,6 +13,35 @@
 
 #define PREEDIT_BUFSIZE 4000
 
+const char thumb_keys_noshift[][3] = {
+	{ 0xa4, 0xa2, 0},
+	{ 0xa4, 0xd8, 0},
+	{ 0xa4, 0xb9, 0},
+	{ 0xa4, 0xc6, 0},
+	{ 0xa4, 0xbf, 0},
+	{ 0xa4, 0xb1, 0},
+	{ 0xa4, 0xbb, 0},
+	{ 0xa4, 0xcf, 0},
+	{ 0xa4, 0xaf, 0},
+	{ 0xa4, 0xc8, 0},
+	{ 0xa4, 0xad, 0},
+	{ 0xa4, 0xa4, 0},
+	{ 0xa4, 0xbd, 0},
+	{ 0xa4, 0xe1, 0},
+	{ 0xa4, 0xc4, 0},
+	{ 0xa4, 0xc4, 0}, // TODO: this is ,
+	{ 0xa4, 0xc4, 0}, // TODO: this is . (japanese)
+	{ 0xa4, 0xb3, 0},
+	{ 0xa4, 0xb7, 0},
+	{ 0xa4, 0xb5, 0},
+	{ 0xa4, 0xc1, 0},
+	{ 0xa4, 0xd5, 0},
+	{ 0xa4, 0xab, 0},
+	{ 0xa4, 0xd2, 0},
+	{ 0xa4, 0xe9, 0}, // TODO: this is . (western)
+	{ 0xa4, 0xe9, 0},
+};
+
 /*
  * Returns false if the key needs to be passed through
  */
@@ -38,11 +67,19 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 		return false;
 	} else {
+		char test[] = { 0xa4, 0xa2, 0x00 };
+		size_t index;
 		switch (sym) {
-		case XKB_KEY_exclam ... XKB_KEY_asciitilde:;
-			uint32_t ch = xkb_state_key_get_utf32(seat->xkb_state, xkb_key);
-			anthy_input_key(seat->input_context, ch);
+		case XKB_KEY_a ... XKB_KEY_z:
+			sym &= ~(1 << 5);
+		case XKB_KEY_A ... XKB_KEY_Z:
+			index = sym - 0x41;
+			strcat(seat->preedit_buffer, thumb_keys_noshift[index]);
 			break;
+		//case XKB_KEY_exclam ... XKB_KEY_asciitilde:;
+		//	uint32_t ch = xkb_state_key_get_utf32(seat->xkb_state, xkb_key);
+		//	anthy_input_key(seat->input_context, ch);
+		//	break;
 		case XKB_KEY_space:
 			anthy_input_space(seat->input_context);
 			break;
@@ -94,6 +131,7 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 			anthy_input_map_select(seat->input_context, ANTHY_INPUT_MAP_WALPHABET);
 			break;
 		default:
+			log_line(LV_DEBUG, "no");
 			return false;
 		}
 	}
@@ -141,10 +179,13 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 		free(utf8_str);
 	}
 	log_tail(LV_DEBUG);
+	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
+	log_line(LV_DEBUG, "%s", utf8_str);
 	zwp_input_method_v2_set_preedit_string(seat->input_method,
-	preedit_str, begin, end);
+	utf8_str, begin, end);
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
 
+	free(utf8_str);
 	anthy_input_free_preedit(pe);
 	return true;
 }
@@ -445,6 +486,8 @@ int main(int argc, char *argv[]) {
 			state.virtual_keyboard_manager, seat->wl_seat);
 		seat->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 		seat->enabled = state.enabled_by_default;
+		seat->preedit_buffer = malloc(PREEDIT_BUFSIZE);
+		seat->preedit_buffer[0] = 0;
 	}
 
 	state.running = true;

@@ -29,6 +29,7 @@ struct wlanthy_seat {
 	iconv_t conv_desc;
 	struct anthy_input_config *input_config;
 	struct anthy_input_context *input_context;
+	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
