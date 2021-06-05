@@ -55,15 +55,55 @@ const char thumb_keys_noshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
 	{ 0xa1, 0xa6, 0},
 };
 
-const char thumb_keys_leftshift[][3] = {
-};
-
-const char thumb_keys_leftshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
+const char thumb_keys_sameshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
 	{ 0xa4, 0xa1, 0},
 	{ 0xa4, 0xa8, 0},
 	{ 0xa4, 0xea, 0},
 	{ 0xa4, 0xe3, 0},
 	{ 0xa4, 0xec, 0},
+
+	{ 0xa4, 0xe8, 0},
+	{ 0xa4, 0xcb, 0},
+	{ 0xa4, 0xeb, 0},
+	{ 0xa4, 0xde, 0},
+	{ 0xa4, 0xa7, 0},
+};
+
+const char thumb_keys_sameshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
+	{ 0xa4, 0xf2, 0},
+	{ 0xa4, 0xa2, 0},
+	{ 0xa4, 0xca, 0},
+	{ 0xa4, 0xe5, 0},
+	{ 0xa4, 0xe2, 0},
+
+	{ 0xa4, 0xdf, 0},
+	{ 0xa4, 0xaa, 0},
+	{ 0xa4, 0xce, 0},
+	{ 0xa4, 0xe7, 0},
+	{ 0xa4, 0xc3, 0},
+};
+
+const char thumb_keys_sameshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
+	{ 0xa4, 0xa5, 0},
+	{ 0xa1, 0xbc, 0},
+	{ 0xa4, 0xed, 0},
+	{ 0xa4, 0xe4, 0},
+	{ 0xa4, 0xa3, 0},
+
+	{ 0xa4, 0xcc, 0},
+	{ 0xa4, 0xe6, 0},
+	{ 0xa4, 0xe0, 0},
+	{ 0xa4, 0xef, 0},
+	{ 0xa4, 0xa9, 0},
+};
+
+const char thumb_keys_crossshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
+	{ 0, 0, 0},  // no cross-shift action
+	{ 0xa4, 0xac, 0},
+	{ 0xa4, 0xc0, 0},
+	{ 0xa4, 0xb4, 0},
+	{ 0xa4, 0xb6, 0},
+
 	{ 0xa4, 0xd1, 0},
 	{ 0xa4, 0xc2, 0},
 	{ 0xa4, 0xb0, 0},
@@ -71,24 +111,26 @@ const char thumb_keys_leftshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
 	{ 0xa4, 0xd4, 0}
 };
 
-const char thumb_keys_leftshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xf2, 0},
-	{ 0xa4, 0xa2, 0},
-	{ 0xa4, 0xca, 0},
-	{ 0xa4, 0xe5, 0},
-	{ 0xa4, 0xe2, 0},
+const char thumb_keys_crossshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
+	{ 0, 0, 0 }, // this would be "u" but with dakuten, which is not contained in jis x 0208 and thus (afaict) also not in euc-jp?
+	{ 0xa4, 0xb8, 0},
+	{ 0xa4, 0xc7, 0},
+	{ 0xa4, 0xb2, 0},
+	{ 0xa4, 0xbc, 0},
+
 	{ 0xa4, 0xd0, 0},
 	{ 0xa4, 0xc9, 0},
 	{ 0xa4, 0xae, 0},
-	{ 0xa4, 0xd1, 0}
+	{ 0xa4, 0xdd, 0}
 };
 
-const char thumb_keys_leftshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xa5, 0},
-	{ 0xa1, 0xbc, 0},
-	{ 0xa4, 0xed, 0},
-	{ 0xa4, 0xe4, 0},
-	{ 0xa4, 0xa3, 0},
+const char thumb_keys_crossshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
+	{ 0, 0, 0},  // no cross-shift action
+	{ 0xa4, 0xd3, 0},
+	{ 0xa4, 0xba, 0},
+	{ 0xa4, 0xd6, 0},
+	{ 0xa4, 0xd9, 0},
+
 	{ 0xa4, 0xd7, 0},
 	{ 0xa4, 0xbe, 0},
 	{ 0xa4, 0xda, 0},
@@ -106,6 +148,8 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
 	xkb_keysym_t sym = xkb_state_key_get_one_sym(seat->xkb_state, xkb_key);
 
+	bool do_commit = false;
+
 	if (sym == seat->state->toggle_key) {
 		seat->enabled = !seat->enabled;
 		if (!seat->enabled) {
@@ -117,9 +161,6 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		}
 		return true;
 	} else if (!seat->enabled) {
-		return false;
-	} else if (state == ANTHY_INPUT_ST_NONE && (xkb_state_mod_name_is_active(seat->xkb_state, XKB_MOD_NAME_ALT,
-XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 		return false;
 	} else {
 		const char *keycode_name = xkb_keymap_key_get_name(seat->xkb_keymap, xkb_key);
@@ -133,12 +174,23 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 			) {
 
 			if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-				if (!seat->current_key) {
+				log_line(LV_DEBUG, "key pressed: %s", keycode_name);
+				if (seat->current_key == XKB_KEYCODE_MAX + 1) {
+					log_line(LV_DEBUG, "... and set as current key: %s", keycode_name);
 					seat->current_key = xkb_key; 
 				}
 			} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
 				if (xkb_key == seat->current_key) {
-					seat->current_key = -1;
+					log_line(LV_DEBUG, "current key released: %s", keycode_name);
+
+					bool same_shift = seat->same_shift_is_pressed || seat->same_shift_was_pressed;
+					bool cross_shift = seat->cross_shift_is_pressed || seat->cross_shift_was_pressed;
+
+					// note: it's important that this happens up here, otherwise we might not do it
+					// due to the early return
+					seat->current_key = XKB_KEYCODE_MAX + 1;
+					seat->same_shift_was_pressed = false;
+					seat->cross_shift_was_pressed = false;
 
 					// process key
 					size_t column = strtol(&keycode_name[2], NULL, 10);
@@ -153,11 +205,29 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 					const char *character;
 
 					if (row == 'B') {
-						character = thumb_keys_leftshift_row_b[column];
+						if (same_shift) {
+							character = thumb_keys_sameshift_row_b[column];
+						} else if (cross_shift) {
+							character = thumb_keys_crossshift_row_b[column];
+						} else {
+							character = thumb_keys_noshift_row_b[column];
+						}
 					} else if (row == 'C') {
-						character = thumb_keys_leftshift_row_c[column];
+						if (same_shift) {
+							character = thumb_keys_sameshift_row_c[column];
+						} else if (cross_shift) {
+							character = thumb_keys_crossshift_row_c[column];
+						} else {
+							character = thumb_keys_noshift_row_c[column];
+						}
 					} else if (row == 'D') {
-						character = thumb_keys_leftshift_row_d[column];
+						if (same_shift) {
+							character = thumb_keys_sameshift_row_d[column];
+						} else if (cross_shift) {
+							character = thumb_keys_crossshift_row_d[column];
+						} else {
+							character = thumb_keys_noshift_row_d[column];
+						}
 					} else {
 						return false;
 					}
@@ -167,23 +237,60 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 			}
 		}
 
-		else if (strcmp(keycode_name, "BKSP") == 0) {
-			size_t preedit_buffer_len = strlen(seat->preedit_buffer);
-			uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
-
-			if (last_char < 0x80) {
-				// single-byte encoding
-				seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+		else if (strcmp(keycode_name, "SPCE") == 0) {
+			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
+					seat->same_shift_was_pressed = seat->same_shift_is_pressed;
+				}
+				seat->same_shift_is_pressed = false;
 			}
-
-			else if (last_char > 0xA0) {
-				// two-byte encoding
-				seat->preedit_buffer[preedit_buffer_len - 1] = 0;
-				seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+			else {
+				if (!seat->cross_shift_is_pressed && !seat->cross_shift_was_pressed) {
+					seat->same_shift_is_pressed = true;
+				}
 			}
 		}
 
-		else {
+		else if ((strcmp(keycode_name, "LALT") == 0) || (strcmp(keycode_name, "RALT") == 0)) {
+			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
+					seat->cross_shift_was_pressed = seat->cross_shift_is_pressed;
+				}
+				seat->cross_shift_is_pressed = false;
+			}
+			else {
+				if (!seat->same_shift_is_pressed && !seat->same_shift_was_pressed) {
+					seat->cross_shift_is_pressed = true;
+				}
+			}
+		}
+
+		else if (strcmp(keycode_name, "RTRN") == 0) {
+			if (strlen(seat->preedit_buffer) == 0) {
+				return false;
+			}
+			do_commit = true;
+		}
+
+		if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+		    if (strcmp(keycode_name, "BKSP") == 0) {
+				size_t preedit_buffer_len = strlen(seat->preedit_buffer);
+				uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
+
+				if (last_char < 0x80) {
+					// single-byte encoding
+					seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+				}
+
+				else if (last_char > 0xA0) {
+					// two-byte encoding
+					seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+					seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+				}
+			}
+		}
+
+/*		else {
 
 			size_t index;
 			switch (sym) {
@@ -250,7 +357,7 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 			default:
 				return false;
 			}
-		}
+		} */
 	}
 	/*
 	 * At this point the key has been handled by anthy
@@ -298,8 +405,14 @@ XKB_STATE_MODS_EFFECTIVE) > 0 || sym == XKB_KEY_Alt_L)) {
 	log_tail(LV_DEBUG);
 	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
 	log_line(LV_DEBUG, "%s", utf8_str);
-	zwp_input_method_v2_set_preedit_string(seat->input_method,
+	if (do_commit) {
+		seat->preedit_buffer[0] = 0;
+		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
+	}
+	else {
+		zwp_input_method_v2_set_preedit_string(seat->input_method,
 	utf8_str, begin, end);
+	}
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
 
 	free(utf8_str);
@@ -320,8 +433,21 @@ static void handle_key(void *data,
 		return;
 	}
 
-//if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-	bool handled = handle_key_anthy(seat, xkb_key, state);
+	bool handled;
+	if (xkb_state_mod_names_are_active(seat->xkb_state,
+XKB_STATE_MODS_EFFECTIVE, XKB_STATE_MATCH_ANY, XKB_MOD_NAME_CTRL,
+XKB_MOD_NAME_LOGO, XKB_MOD_NAME_CAPS,
+// TODO: investigate EFFECTIVE vs others
+// TODO: investigate XKB_LED_NAME_CAPS, XKB_LED_NAME_NUM, XKB_LED_NAME_SCROLL
+NULL) > 0) {
+	/*
+	 * Passthrough key if any modifier is active
+	 */
+		handled = false;
+	}
+	else {
+		handled = handle_key_anthy(seat, xkb_key, state);
+	}
 
 	// we are sending too many release here... bring back wlhangul stuff
 	if (!handled) {
@@ -452,6 +578,12 @@ static void handle_done(void *data, struct zwp_input_method_v2 *input_method) {
 		// reset state
 		anthy_input_free_context(seat->input_context);
 		seat->input_context = anthy_input_create_context(seat->input_config);
+		seat->preedit_buffer[0] = 0;
+		seat->current_key = XKB_KEYCODE_MAX + 1;
+		seat->same_shift_is_pressed = false;
+		seat->same_shift_was_pressed = false;
+		seat->cross_shift_is_pressed = false;
+		seat->cross_shift_was_pressed = false;
 
 		memset(seat->pressed, 0, sizeof(seat->pressed));
 
@@ -592,7 +724,11 @@ int main(int argc, char *argv[]) {
 		seat->enabled = state.enabled_by_default;
 		seat->preedit_buffer = malloc(PREEDIT_BUFSIZE);
 		seat->preedit_buffer[0] = 0;
-		seat->current_key = -1;
+		seat->current_key = XKB_KEYCODE_MAX + 1;
+		seat->same_shift_is_pressed = false;
+		seat->same_shift_was_pressed = false;
+		seat->cross_shift_is_pressed = false;
+		seat->cross_shift_was_pressed = false;
 	}
 
 	state.running = true;

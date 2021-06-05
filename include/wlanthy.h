@@ -31,6 +31,10 @@ struct wlanthy_seat {
 	struct anthy_input_context *input_context;
 	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
 	xkb_keycode_t current_key;
+	bool same_shift_is_pressed;
+	bool same_shift_was_pressed;
+	bool cross_shift_is_pressed;
+	bool cross_shift_was_pressed;
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
