@@ -5,6 +5,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <poll.h>
+#include <sys/timerfd.h>
 #include <wayland-client.h>
 #include "wlanthy.h"
 #include "log.h"
@@ -13,6 +15,9 @@
 
 #define PREEDIT_BUFSIZE 4000
 #define THUMB_KEYMAP_ROW_LENGTH 11
+#define NO_KEY (XKB_KEYCODE_MAX + 1)
+#define THUMB_TIMEOUT_1 100
+#define THUMB_TIMEOUT_2 75
 
 const char thumb_keys_noshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
 	{ 0xa1, 0xa3, 0},
@@ -137,6 +142,103 @@ const char thumb_keys_crossshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
 	{ 0xa4, 0xdc, 0}
 };
 
+// timeout is given in milliseconds
+void start_timer(struct wlanthy_seat *seat, long timeout) {
+    struct itimerspec timer_info = {
+        .it_interval = { 0, 0 },
+        .it_value = { 0, timeout * 1000 * 1000 } // 0 seconds, timeout * (1e6 ns == 1 ms)
+    };
+
+    timerfd_settime(seat->timerfd, 0, &timer_info, NULL);
+
+    log_line(LV_DEBUG, "timer has been set");
+}
+
+void stop_timer(struct wlanthy_seat *seat) {
+    struct itimerspec timer_info = {
+        .it_interval = { 0, 0 },
+        .it_value = { 0, 0 } // set everything to 0, stop the timer
+    };
+
+    timerfd_settime(seat->timerfd, 0, &timer_info, NULL);
+    log_line(LV_DEBUG, "timer has been reset");
+}
+
+void send_preedit_buffer(struct wlanthy_seat *seat) {
+	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
+	log_line(LV_DEBUG, "%s", utf8_str);
+//	if (do_commit) {
+//		seat->preedit_buffer[0] = 0;
+//		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
+//	}
+//	else {
+		zwp_input_method_v2_set_preedit_string(seat->input_method,
+	utf8_str, 0, 0); // todo: the 0, 0 is a cursor position, make that better
+	//}
+	zwp_input_method_v2_commit(seat->input_method, seat->serial);
+
+	free(utf8_str);
+}
+
+void write_key(struct wlanthy_seat *seat) {
+
+    log_line(LV_DEBUG, "writing key!");
+
+    if (seat->current_key != XKB_KEYCODE_MAX + 1) {
+        enum wlanthy_shift_key shift_key = seat->current_shift_key;
+
+        log_line(LV_DEBUG, "%d", seat->current_key);
+        log_line(LV_DEBUG, "%d", NO_KEY);
+        const char *keycode_name = xkb_keymap_key_get_name(seat->xkb_keymap, seat->current_key);
+        size_t column = strtol(&keycode_name[2], NULL, 10);
+        column -= 1;
+
+        if (column >= THUMB_KEYMAP_ROW_LENGTH) {
+            return;
+        }
+
+        char row = keycode_name[1];
+        const char *character;
+
+        if (row == 'B') {
+            if (shift_key == WLANTHY_SAME_SHIFT) {
+                character = thumb_keys_sameshift_row_b[column];
+            } else if (shift_key == WLANTHY_CROSS_SHIFT) {
+                character = thumb_keys_crossshift_row_b[column];
+            } else {
+                character = thumb_keys_noshift_row_b[column];
+            }
+        } else if (row == 'C') {
+            if (shift_key == WLANTHY_SAME_SHIFT) {
+                character = thumb_keys_sameshift_row_c[column];
+            } else if (shift_key == WLANTHY_CROSS_SHIFT) {
+                character = thumb_keys_crossshift_row_c[column];
+            } else {
+                character = thumb_keys_noshift_row_c[column];
+            }
+        } else if (row == 'D') {
+            if (shift_key == WLANTHY_SAME_SHIFT) {
+                character = thumb_keys_sameshift_row_d[column];
+            } else if (shift_key == WLANTHY_CROSS_SHIFT) {
+                character = thumb_keys_crossshift_row_d[column];
+            } else {
+                character = thumb_keys_noshift_row_d[column];
+            }
+        } else {
+            return;
+        }
+
+        strcat(seat->preedit_buffer, character);
+    }
+
+    // TODO: handle space (henkan/muhenkan)
+
+    seat->current_key = XKB_KEYCODE_MAX + 1;
+    seat->current_shift_key = WLANTHY_NO_SHIFT;
+    //stop_timer();
+    send_preedit_buffer(seat);
+}
+
 /*
  * Returns false if the key needs to be passed through
  */
@@ -166,102 +268,80 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		const char *keycode_name = xkb_keymap_key_get_name(seat->xkb_keymap, xkb_key);
 		log_line(LV_DEBUG, "%s", keycode_name);
 
-		if ((keycode_name[0] == 'A')
-				&& (strlen(keycode_name) == 4)
-				// && (strtol(keycode_name[2]) < THUMB_KEYMAP_ROW_LENGTH)
-				// && (keycode_name[1] >= 'B')
-				// && (keycode_name[1] <= 'D')
+		if (strlen(keycode_name) == 4
+                && (keycode_name[0] == 'A')
+				&& (keycode_name[1] >= 'B')
+				&& (keycode_name[1] <= 'D')
+				&& (keycode_name[2] >= '0')
+				&& (keycode_name[2] <= '9')
+				&& (keycode_name[3] >= '0')
+				&& (keycode_name[3] <= '9')
 			) {
 
 			if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 				log_line(LV_DEBUG, "key pressed: %s", keycode_name);
-				if (seat->current_key == XKB_KEYCODE_MAX + 1) {
-					log_line(LV_DEBUG, "... and set as current key: %s", keycode_name);
-					seat->current_key = xkb_key; 
+				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
+					log_line(LV_DEBUG, "... replacing current key");
+                    // since this is replacing the currently pressed key,
+                    // we write that one immediately
+                    write_key(seat);
+                    seat->current_key = xkb_key; 
+                    start_timer(seat, THUMB_TIMEOUT_2); // this is t2 in ibus-anthy (i think), i.e. the shorter of the two
 				}
+                else if (seat->current_shift_key != WLANTHY_NO_SHIFT) {
+                    // a space key is already pressed, so we can write
+                    // immediately. note that this is mutually exclusive
+                    // with the first case, since whenever a key and a space
+                    // key are pressed simultaneously, they are written
+                    // immediately and then reset.
+                    seat->current_key = xkb_key; 
+                    write_key(seat);
+                }
+                else {
+                    seat->current_key = xkb_key; 
+                    start_timer(seat, THUMB_TIMEOUT_2);
+                }
 			} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
 				if (xkb_key == seat->current_key) {
 					log_line(LV_DEBUG, "current key released: %s", keycode_name);
 
-					bool same_shift = seat->same_shift_is_pressed || seat->same_shift_was_pressed;
-					bool cross_shift = seat->cross_shift_is_pressed || seat->cross_shift_was_pressed;
-
-					// note: it's important that this happens up here, otherwise we might not do it
-					// due to the early return
-					seat->current_key = XKB_KEYCODE_MAX + 1;
-					seat->same_shift_was_pressed = false;
-					seat->cross_shift_was_pressed = false;
-
-					// process key
-					size_t column = strtol(&keycode_name[2], NULL, 10);
-					log_line(LV_DEBUG, "retrieving column: %d", column);
-					column -= 1;
-
-					if (column >= THUMB_KEYMAP_ROW_LENGTH) {
-						return false;
-					}
-
-					char row = keycode_name[1];
-					const char *character;
-
-					if (row == 'B') {
-						if (same_shift) {
-							character = thumb_keys_sameshift_row_b[column];
-						} else if (cross_shift) {
-							character = thumb_keys_crossshift_row_b[column];
-						} else {
-							character = thumb_keys_noshift_row_b[column];
-						}
-					} else if (row == 'C') {
-						if (same_shift) {
-							character = thumb_keys_sameshift_row_c[column];
-						} else if (cross_shift) {
-							character = thumb_keys_crossshift_row_c[column];
-						} else {
-							character = thumb_keys_noshift_row_c[column];
-						}
-					} else if (row == 'D') {
-						if (same_shift) {
-							character = thumb_keys_sameshift_row_d[column];
-						} else if (cross_shift) {
-							character = thumb_keys_crossshift_row_d[column];
-						} else {
-							character = thumb_keys_noshift_row_d[column];
-						}
-					} else {
-						return false;
-					}
-
-					strcat(seat->preedit_buffer, character);
+                    write_key(seat);
 				}
 			}
 		}
 
 		else if (strcmp(keycode_name, "SPCE") == 0) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
-					seat->same_shift_was_pressed = seat->same_shift_is_pressed;
-				}
-				seat->same_shift_is_pressed = false;
+                if (seat->current_shift_key == WLANTHY_SAME_SHIFT) {
+                    seat->current_shift_key = WLANTHY_NO_SHIFT;
+                }
 			}
 			else {
-				if (!seat->cross_shift_is_pressed && !seat->cross_shift_was_pressed) {
-					seat->same_shift_is_pressed = true;
-				}
+                seat->current_shift_key = WLANTHY_SAME_SHIFT;
+                if (seat->current_key != NO_KEY) {
+                    write_key(seat);
+                }
+                else {
+                    seat->current_shift_key = WLANTHY_SAME_SHIFT;
+                    start_timer(seat, THUMB_TIMEOUT_1); // this is t1 in ibus-anthy, i.e. the longer of the two
+                }
 			}
 		}
 
 		else if ((strcmp(keycode_name, "LALT") == 0) || (strcmp(keycode_name, "RALT") == 0)) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
-					seat->cross_shift_was_pressed = seat->cross_shift_is_pressed;
-				}
-				seat->cross_shift_is_pressed = false;
+                if (seat->current_shift_key == WLANTHY_CROSS_SHIFT) {
+                    seat->current_shift_key = WLANTHY_NO_SHIFT;
+                }
 			}
 			else {
-				if (!seat->same_shift_is_pressed && !seat->same_shift_was_pressed) {
-					seat->cross_shift_is_pressed = true;
-				}
+                seat->current_shift_key = WLANTHY_CROSS_SHIFT;
+                if (seat->current_key != NO_KEY) {
+                    write_key(seat);
+                }
+                else {
+                    start_timer(seat, THUMB_TIMEOUT_1); // this is t1 in ibus-anthy (i think)
+                }
 			}
 		}
 
@@ -287,6 +367,7 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 					seat->preedit_buffer[preedit_buffer_len - 1] = 0;
 					seat->preedit_buffer[preedit_buffer_len - 2] = 0;
 				}
+                send_preedit_buffer(seat);
 			}
 		}
 
@@ -403,19 +484,6 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		free(utf8_str);
 	}
 	log_tail(LV_DEBUG);
-	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
-	log_line(LV_DEBUG, "%s", utf8_str);
-	if (do_commit) {
-		seat->preedit_buffer[0] = 0;
-		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
-	}
-	else {
-		zwp_input_method_v2_set_preedit_string(seat->input_method,
-	utf8_str, begin, end);
-	}
-	zwp_input_method_v2_commit(seat->input_method, seat->serial);
-
-	free(utf8_str);
 	anthy_input_free_preedit(pe);
 	return true;
 }
@@ -579,11 +647,8 @@ static void handle_done(void *data, struct zwp_input_method_v2 *input_method) {
 		anthy_input_free_context(seat->input_context);
 		seat->input_context = anthy_input_create_context(seat->input_config);
 		seat->preedit_buffer[0] = 0;
-		seat->current_key = XKB_KEYCODE_MAX + 1;
-		seat->same_shift_is_pressed = false;
-		seat->same_shift_was_pressed = false;
-		seat->cross_shift_is_pressed = false;
-		seat->cross_shift_was_pressed = false;
+		seat->current_key = NO_KEY;
+        seat->current_shift_key = WLANTHY_NO_SHIFT;
 
 		memset(seat->pressed, 0, sizeof(seat->pressed));
 
@@ -706,6 +771,12 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+    struct pollfd *pollfds = malloc(sizeof(struct pollfd));
+    pollfds[0].fd = wl_display_get_fd(state.display);
+    pollfds[0].events = POLLIN;
+    pollfds[0].revents = 0;
+    size_t num_pollfds = 1;
+
 	anthy_input_init();
 
 	struct wlanthy_seat *seat;
@@ -724,16 +795,56 @@ int main(int argc, char *argv[]) {
 		seat->enabled = state.enabled_by_default;
 		seat->preedit_buffer = malloc(PREEDIT_BUFSIZE);
 		seat->preedit_buffer[0] = 0;
-		seat->current_key = XKB_KEYCODE_MAX + 1;
-		seat->same_shift_is_pressed = false;
-		seat->same_shift_was_pressed = false;
-		seat->cross_shift_is_pressed = false;
-		seat->cross_shift_was_pressed = false;
+		seat->current_key = NO_KEY;
+        seat->current_shift_key = WLANTHY_NO_SHIFT;
+        seat->timerfd = timerfd_create(CLOCK_REALTIME, 0);
+
+        num_pollfds += 1;
+        pollfds = realloc(pollfds, num_pollfds * sizeof(struct pollfd));
+        pollfds[num_pollfds - 1].fd = seat->timerfd;
+        pollfds[num_pollfds - 1].events = POLLIN;
+        pollfds[num_pollfds - 1].revents = 0;
 	}
 
+    log_line(LV_DEBUG, "%d", num_pollfds);
+
 	state.running = true;
-	while (state.running && wl_display_dispatch(state.display) != -1) {
-		// This space is intentionally left blank
+	while (true) {
+
+        // this first one probably isn't necessary, but I'm doing
+        // it anyway to be clean
+        wl_display_dispatch_pending(state.display);
+        wl_display_flush(state.display);
+        poll(pollfds, num_pollfds, -1);
+
+        // todo: what about error states etc
+        if (pollfds[0].revents & POLLIN) {
+
+            if (wl_display_dispatch(state.display) == -1) {
+                break;
+            }
+        }
+
+        // iterate over each seat's fd
+        size_t i = 1;
+        wl_list_for_each(seat, &state.seats, link) {
+            if (pollfds[i].revents & POLLIN) {
+                // timer has expired, do something
+
+                // also, clear the timer (we might not have to do this though,
+                // since it'll be reset anyway the next time someone calls settime?
+                uint64_t times_expired;
+                read(seat->timerfd, &times_expired, sizeof(times_expired));
+
+                log_line(LV_DEBUG, "timer has expired");
+                write_key(seat);
+            }
+            i += 1;
+        }
+
+        if (!state.running) {
+            break;
+        }
 	}
 
 //	finalize (seat->conv_desc);

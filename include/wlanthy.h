@@ -8,6 +8,12 @@
 #include <wayland-client-core.h>
 #include <xkbcommon/xkbcommon.h>
 
+enum wlanthy_shift_key {
+    WLANTHY_NO_SHIFT,
+    WLANTHY_CROSS_SHIFT,
+    WLANTHY_SAME_SHIFT
+};
+
 struct wlanthy_state {
 	struct wl_display *display;
 	struct zwp_input_method_manager_v2 *input_method_manager;
@@ -26,15 +32,14 @@ struct wlanthy_seat {
 	struct wl_seat *wl_seat;
 	struct wlanthy_state *state;
 
+    int timerfd;
+
 	iconv_t conv_desc;
 	struct anthy_input_config *input_config;
 	struct anthy_input_context *input_context;
 	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
 	xkb_keycode_t current_key;
-	bool same_shift_is_pressed;
-	bool same_shift_was_pressed;
-	bool cross_shift_is_pressed;
-	bool cross_shift_was_pressed;
+    enum wlanthy_shift_key current_shift_key;
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
@@ -50,6 +55,7 @@ struct wlanthy_seat {
 	struct zwp_input_method_keyboard_grab_v2 *keyboard_grab;
 	xkb_keycode_t pressed[64];
 };
+
 
 char *
 iconv_code_conv(iconv_t cd, const char *instr);
