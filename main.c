@@ -164,17 +164,18 @@ void stop_timer(struct wlanthy_seat *seat) {
     log_line(LV_DEBUG, "timer has been reset");
 }
 
-void send_preedit_buffer(struct wlanthy_seat *seat) {
+// commit: if true, send the preedit buffer as commit text. then, clear it.
+void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
 	log_line(LV_DEBUG, "%s", utf8_str);
-//	if (do_commit) {
-//		seat->preedit_buffer[0] = 0;
-//		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
-//	}
-//	else {
+	if (commit) {
+		seat->preedit_buffer[0] = 0;
+		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
+	}
+	else {
 		zwp_input_method_v2_set_preedit_string(seat->input_method,
 	utf8_str, 0, 0); // todo: the 0, 0 is a cursor position, make that better
-	//}
+	}
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
 
 	free(utf8_str);
@@ -231,12 +232,16 @@ void write_key(struct wlanthy_seat *seat) {
         strcat(seat->preedit_buffer, character);
     }
 
+    else if (seat->current_shift_key != WLANTHY_NO_SHIFT) {
+        log_line(LV_DEBUG, "shift key action!");
+    }
+
     // TODO: handle space (henkan/muhenkan)
 
     seat->current_key = XKB_KEYCODE_MAX + 1;
     seat->current_shift_key = WLANTHY_NO_SHIFT;
     //stop_timer();
-    send_preedit_buffer(seat);
+    send_preedit_buffer(seat, false);
 }
 
 /*
@@ -349,27 +354,40 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 			if (strlen(seat->preedit_buffer) == 0) {
 				return false;
 			}
-			do_commit = true;
+            send_preedit_buffer(seat, true);
 		}
 
-		if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-		    if (strcmp(keycode_name, "BKSP") == 0) {
+        else if (strcmp(keycode_name, "BKSP") == 0) {
+            if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 				size_t preedit_buffer_len = strlen(seat->preedit_buffer);
-				uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
 
-				if (last_char < 0x80) {
-					// single-byte encoding
-					seat->preedit_buffer[preedit_buffer_len - 1] = 0;
-				}
+                if (preedit_buffer_len >= 1) {
+                    uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
 
-				else if (last_char > 0xA0) {
-					// two-byte encoding
-					seat->preedit_buffer[preedit_buffer_len - 1] = 0;
-					seat->preedit_buffer[preedit_buffer_len - 2] = 0;
-				}
-                send_preedit_buffer(seat);
+                    if (last_char < 0x80) {
+                        // single-byte encoding
+                        seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                    }
+
+                    else if (last_char > 0xA0) {
+                        // two-byte encoding
+                        seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                        seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+                    }
+                    send_preedit_buffer(seat, false);
+                }
+                else {
+                    return false;
+                }
 			}
+            else {
+                return false;
+            }
 		}
+
+        else {
+            return false;
+        }
 
 /*		else {
 
