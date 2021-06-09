@@ -8,10 +8,17 @@
 #include <wayland-client-core.h>
 #include <xkbcommon/xkbcommon.h>
 
+#define SEGMENT_BUFSIZE 50
+
 enum wlanthy_shift_key {
     WLANTHY_NO_SHIFT,
     WLANTHY_CROSS_SHIFT,
     WLANTHY_SAME_SHIFT
+};
+
+enum wlanthy_input_mode {
+    WLANTHY_INPUT_MODE_EDIT,
+    WLANTHY_INPUT_MODE_CONVERT
 };
 
 struct wlanthy_state {
@@ -37,9 +44,14 @@ struct wlanthy_seat {
 	iconv_t conv_desc;
 	struct anthy_input_config *input_config;
 	struct anthy_input_context *input_context;
+    anthy_context_t conversion_context;
+    int conversion_segment_indices[SEGMENT_BUFSIZE];
+    int conversion_num_segments;
+    int conversion_current_segment;
 	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
 	xkb_keycode_t current_key;
     enum wlanthy_shift_key current_shift_key;
+    enum wlanthy_input_mode input_mode;
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 

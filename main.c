@@ -166,10 +166,13 @@ void stop_timer(struct wlanthy_seat *seat) {
 
 // commit: if true, send the preedit buffer as commit text. then, clear it.
 void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
+
 	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
 	log_line(LV_DEBUG, "%s", utf8_str);
+
 	if (commit) {
 		seat->preedit_buffer[0] = 0;
+        seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
 		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
 	}
 	else {
@@ -179,6 +182,74 @@ void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
 
 	free(utf8_str);
+}
+
+void update_preedit_buffer_conversion(struct wlanthy_seat *seat) {
+    if (seat->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+        return;
+    }
+
+    struct anthy_segment_stat segment_stat;
+
+    size_t buffer_write_pos = 0;
+
+    for (int i = 0; i < seat->conversion_num_segments; i++) {
+        anthy_get_segment_stat(seat->conversion_context, i, &segment_stat);
+        int segment_index = seat->conversion_segment_indices[i];
+        int chars_written = anthy_get_segment(seat->conversion_context, i, segment_index, seat->preedit_buffer + buffer_write_pos, PREEDIT_BUFSIZE - buffer_write_pos);
+        if (chars_written >= 0) {
+            buffer_write_pos += chars_written;
+        }
+        else {
+            log_line(LV_DEBUG, "anthy returned a conversion error");
+        }
+    }
+}
+
+void start_conversion(struct wlanthy_seat *seat) {
+    if (seat->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+        log_line(LV_DEBUG, "already in convert mode, refusing to start conversion");
+        return;
+    }
+
+    if (strlen(seat->preedit_buffer) == 0) {
+        log_line(LV_DEBUG, "preedit buffer empty, refusing to start conversion");
+        return;
+    }
+
+    seat->conversion_context = anthy_create_context();
+    anthy_set_string(seat->conversion_context, seat->preedit_buffer);
+    struct anthy_conv_stat conv_stat;
+    anthy_get_stat(seat->conversion_context, &conv_stat);
+    seat->conversion_num_segments = conv_stat.nr_segment;
+    seat->conversion_current_segment = 0;
+
+    for (int i = 0; i < seat->conversion_num_segments; i++) {
+        seat->conversion_segment_indices[i] = 0;
+    }
+
+    seat->input_mode = WLANTHY_INPUT_MODE_CONVERT;
+
+    update_preedit_buffer_conversion(seat);
+
+    log_line(LV_DEBUG, "starting conversion");
+}
+
+void stop_conversion_no_commit(struct wlanthy_seat *seat) {
+    if (seat->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+        return;
+    }
+
+    log_line(LV_DEBUG, "stopping conversion");
+
+    for (int i = 0; i < seat->conversion_num_segments; i++) {
+        seat->conversion_segment_indices[i] = NTH_HIRAGANA_CANDIDATE;
+    }
+    update_preedit_buffer_conversion(seat);
+
+    anthy_release_context(seat->conversion_context);
+    seat->conversion_context = NULL;
+    seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
 }
 
 void write_key(struct wlanthy_seat *seat) {
@@ -234,6 +305,16 @@ void write_key(struct wlanthy_seat *seat) {
 
     else if (seat->current_shift_key != WLANTHY_NO_SHIFT) {
         log_line(LV_DEBUG, "shift key action!");
+
+        if (seat->current_shift_key == WLANTHY_SAME_SHIFT) {
+            // i'm treating this as henkan
+            if (seat->input_mode == WLANTHY_INPUT_MODE_EDIT) {
+                start_conversion(seat);
+            }
+            else {
+            }
+        }
+
     }
 
     // TODO: handle space (henkan/muhenkan)
@@ -318,10 +399,13 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		else if (strcmp(keycode_name, "SPCE") == 0) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
                 if (seat->current_shift_key == WLANTHY_SAME_SHIFT) {
-                    seat->current_shift_key = WLANTHY_NO_SHIFT;
+                    write_key(seat);
                 }
 			}
 			else {
+                // TODO: handle shift key replace
+                // (press other shift key, this becomes the new shift key
+                // and commits the action of the old one)
                 seat->current_shift_key = WLANTHY_SAME_SHIFT;
                 if (seat->current_key != NO_KEY) {
                     write_key(seat);
@@ -359,26 +443,37 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
         else if (strcmp(keycode_name, "BKSP") == 0) {
             if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-				size_t preedit_buffer_len = strlen(seat->preedit_buffer);
 
-                if (preedit_buffer_len >= 1) {
-                    uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
+                if (seat->input_mode == WLANTHY_INPUT_MODE_EDIT) {
+                    size_t preedit_buffer_len = strlen(seat->preedit_buffer);
 
-                    if (last_char < 0x80) {
-                        // single-byte encoding
-                        seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                    log_line(LV_DEBUG, "deleting; preedit buffer length in bytes: %d", preedit_buffer_len);
+
+                    if (preedit_buffer_len >= 1) {
+                        uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
+
+                        if (last_char < 0x80) {
+                            // single-byte encoding
+                            seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                        }
+
+                        else if (last_char > 0xA0) {
+                            // two-byte encoding
+                            seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                            seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+                        }
+
+                        log_line(LV_DEBUG, "deleted; preedit buffer length in bytes: %d", strlen(seat->preedit_buffer));
                     }
-
-                    else if (last_char > 0xA0) {
-                        // two-byte encoding
-                        seat->preedit_buffer[preedit_buffer_len - 1] = 0;
-                        seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+                    else {
+                        return false;
                     }
-                    send_preedit_buffer(seat, false);
+                } 
+                else if (seat->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+                    stop_conversion_no_commit(seat);
                 }
-                else {
-                    return false;
-                }
+
+                send_preedit_buffer(seat, false);
 			}
             else {
                 return false;
@@ -815,6 +910,7 @@ int main(int argc, char *argv[]) {
 		seat->preedit_buffer[0] = 0;
 		seat->current_key = NO_KEY;
         seat->current_shift_key = WLANTHY_NO_SHIFT;
+        seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
         seat->timerfd = timerfd_create(CLOCK_REALTIME, 0);
 
         num_pollfds += 1;
