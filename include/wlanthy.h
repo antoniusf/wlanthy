@@ -34,6 +34,19 @@ struct wlanthy_state {
 	xkb_keysym_t toggle_key;
 };
 
+struct wlanthy_im_state {
+    enum wlanthy_input_mode input_mode;
+
+	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
+	xkb_keycode_t current_key;
+    enum wlanthy_shift_key current_shift_key;
+
+    anthy_context_t conversion_context;
+    int conversion_segment_indices[SEGMENT_BUFSIZE];
+    int conversion_num_segments;
+    int conversion_current_segment;
+}
+
 struct wlanthy_seat {
 	struct wl_list link;
 	struct wl_seat *wl_seat;
@@ -44,16 +57,9 @@ struct wlanthy_seat {
 	iconv_t conv_desc;
 	struct anthy_input_config *input_config;
 	struct anthy_input_context *input_context;
-    anthy_context_t conversion_context;
-    int conversion_segment_indices[SEGMENT_BUFSIZE];
-    int conversion_num_segments;
-    int conversion_current_segment;
-	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
-	xkb_keycode_t current_key;
-    enum wlanthy_shift_key current_shift_key;
-    enum wlanthy_input_mode input_mode;
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
+    struct wlanthy_im_state im_state;
 
 	struct xkb_context *xkb_context;
 	struct xkb_keymap *xkb_keymap;

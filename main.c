@@ -167,12 +167,12 @@ void stop_timer(struct wlanthy_seat *seat) {
 // commit: if true, send the preedit buffer as commit text. then, clear it.
 void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 
-	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->preedit_buffer);
+	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->im_state.preedit_buffer);
 	log_line(LV_DEBUG, "%s", utf8_str);
 
 	if (commit) {
-		seat->preedit_buffer[0] = 0;
-        seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
+		seat->im_state.preedit_buffer[0] = 0;
+        seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
 		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
 	}
 	else {
@@ -184,8 +184,8 @@ void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 	free(utf8_str);
 }
 
-void update_preedit_buffer_conversion(struct wlanthy_seat *seat) {
-    if (seat->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+void update_preedit_buffer_conversion(struct wlanthy_im_state *im_state) {
+    if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
         return;
     }
 
@@ -193,10 +193,10 @@ void update_preedit_buffer_conversion(struct wlanthy_seat *seat) {
 
     size_t buffer_write_pos = 0;
 
-    for (int i = 0; i < seat->conversion_num_segments; i++) {
-        anthy_get_segment_stat(seat->conversion_context, i, &segment_stat);
-        int segment_index = seat->conversion_segment_indices[i];
-        int chars_written = anthy_get_segment(seat->conversion_context, i, segment_index, seat->preedit_buffer + buffer_write_pos, PREEDIT_BUFSIZE - buffer_write_pos);
+    for (int i = 0; i < im_state->conversion_num_segments; i++) {
+        anthy_get_segment_stat(im_state->conversion_context, i, &segment_stat);
+        int segment_index = im_state->conversion_segment_indices[i];
+        int chars_written = anthy_get_segment(im_state->conversion_context, i, segment_index, im_state->preedit_buffer + buffer_write_pos, PREEDIT_BUFSIZE - buffer_write_pos);
         if (chars_written >= 0) {
             buffer_write_pos += chars_written;
         }
@@ -206,50 +206,50 @@ void update_preedit_buffer_conversion(struct wlanthy_seat *seat) {
     }
 }
 
-void start_conversion(struct wlanthy_seat *seat) {
-    if (seat->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+im_state start_conversion(struct wlanthy_im_state *im_state) {
+    if (im_state->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
         log_line(LV_DEBUG, "already in convert mode, refusing to start conversion");
         return;
     }
 
-    if (strlen(seat->preedit_buffer) == 0) {
+    if (strlen(im_state->preedit_buffer) == 0) {
         log_line(LV_DEBUG, "preedit buffer empty, refusing to start conversion");
         return;
     }
 
-    seat->conversion_context = anthy_create_context();
-    anthy_set_string(seat->conversion_context, seat->preedit_buffer);
+    im_state->conversion_context = anthy_create_context();
+    anthy_set_string(im_state->conversion_context, im_state->preedit_buffer);
     struct anthy_conv_stat conv_stat;
-    anthy_get_stat(seat->conversion_context, &conv_stat);
-    seat->conversion_num_segments = conv_stat.nr_segment;
-    seat->conversion_current_segment = 0;
+    anthy_get_stat(im_state->conversion_context, &conv_stat);
+    im_state->conversion_num_segments = conv_stat.nr_segment;
+    im_state->conversion_current_segment = 0;
 
-    for (int i = 0; i < seat->conversion_num_segments; i++) {
-        seat->conversion_segment_indices[i] = 0;
+    for (int i = 0; i < im_state->conversion_num_segments; i++) {
+        im_state->conversion_segment_indices[i] = 0;
     }
 
-    seat->input_mode = WLANTHY_INPUT_MODE_CONVERT;
+    im_state->input_mode = WLANTHY_INPUT_MODE_CONVERT;
 
-    update_preedit_buffer_conversion(seat);
+    update_preedit_buffer_conversion(im_state);
 
     log_line(LV_DEBUG, "starting conversion");
 }
 
-void stop_conversion_no_commit(struct wlanthy_seat *seat) {
-    if (seat->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+void stop_conversion_no_commit(struct wlanthy_im_state *im_state) {
+    if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
         return;
     }
 
     log_line(LV_DEBUG, "stopping conversion");
 
-    for (int i = 0; i < seat->conversion_num_segments; i++) {
-        seat->conversion_segment_indices[i] = NTH_HIRAGANA_CANDIDATE;
+    for (int i = 0; i < im_state->conversion_num_segments; i++) {
+        im_state->conversion_segment_indices[i] = NTH_HIRAGANA_CANDIDATE;
     }
-    update_preedit_buffer_conversion(seat);
+    update_preedit_buffer_conversion(im_state);
 
-    anthy_release_context(seat->conversion_context);
-    seat->conversion_context = NULL;
-    seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
+    anthy_release_context(im_state->conversion_context);
+    im_state->conversion_context = NULL;
+    im_state->input_mode = WLANTHY_INPUT_MODE_EDIT;
 }
 
 void write_key(struct wlanthy_seat *seat) {
@@ -906,12 +906,13 @@ int main(int argc, char *argv[]) {
 			state.virtual_keyboard_manager, seat->wl_seat);
 		seat->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 		seat->enabled = state.enabled_by_default;
-		seat->preedit_buffer = malloc(PREEDIT_BUFSIZE);
-		seat->preedit_buffer[0] = 0;
-		seat->current_key = NO_KEY;
-        seat->current_shift_key = WLANTHY_NO_SHIFT;
-        seat->input_mode = WLANTHY_INPUT_MODE_EDIT;
         seat->timerfd = timerfd_create(CLOCK_REALTIME, 0);
+
+        seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
+		seat->im_state.preedit_buffer = malloc(PREEDIT_BUFSIZE);
+		seat->im_state.preedit_buffer[0] = 0;
+		seat->im_state.current_key = NO_KEY;
+        seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
 
         num_pollfds += 1;
         pollfds = realloc(pollfds, num_pollfds * sizeof(struct pollfd));
