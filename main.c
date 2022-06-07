@@ -407,11 +407,8 @@ void write_key(struct wlanthy_seat *seat) {
 static bool handle_key_anthy(struct wlanthy_seat *seat,
 							 xkb_keycode_t xkb_key,
 							 uint32_t key_state) {
-	int state = anthy_input_get_state(seat->input_context);
-	int map = anthy_input_get_selected_map(seat->input_context);
 
 	xkb_keysym_t sym = xkb_state_key_get_one_sym(seat->xkb_state, xkb_key);
-	bool do_commit = false;
 
 	if (sym == seat->state->toggle_key) {
 		seat->enabled = !seat->enabled;
@@ -608,123 +605,15 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
         else {
             return false;
         }
-
-/*		else {
-
-			size_t index;
-			switch (sym) {
-			case XKB_KEY_a ... XKB_KEY_z:
-				sym &= ~(1 << 5);
-			case XKB_KEY_A ... XKB_KEY_Z:
-				index = sym - 0x41;
-				//strcat(seat->im_state.preedit_buffer, thumb_keys_leftshift[index]);
-				break;
-			//case XKB_KEY_exclam ... XKB_KEY_asciitilde:;
-			//	uint32_t ch = xkb_state_key_get_utf32(seat->xkb_state, xkb_key);
-			//	anthy_input_key(seat->input_context, ch);
-			//	break;
-			case XKB_KEY_space:
-				anthy_input_space(seat->input_context);
-				break;
-			case XKB_KEY_BackSpace:
-				if (state != ANTHY_INPUT_ST_NONE) {
-					// TODO: send this repeatedly until key release
-					anthy_input_erase_prev(seat->input_context);
-				} else
-					return false;
-				break;
-			case XKB_KEY_Tab:
-				if (state != ANTHY_INPUT_ST_NONE) {
-					if (xkb_state_mod_name_is_active(seat->xkb_state, XKB_MOD_NAME_ALT,
-													 XKB_STATE_MODS_EFFECTIVE) > 0)
-						anthy_input_resize(seat->input_context, 1);
-					else
-					anthy_input_move(seat->input_context, 1);
-				} else
-					return false;
-				break;
-			case XKB_KEY_ISO_Left_Tab:
-				if (state != ANTHY_INPUT_ST_NONE) {
-					if (xkb_state_mod_name_is_active(seat->xkb_state, XKB_MOD_NAME_ALT,
-													 XKB_STATE_MODS_EFFECTIVE) > 0)
-						anthy_input_resize(seat->input_context, -1);
-					else
-					anthy_input_move(seat->input_context, -1);
-				} else
-					return false;
-				break;
-			case XKB_KEY_Return:
-				if (state != ANTHY_INPUT_ST_NONE) {
-					anthy_input_commit(seat->input_context);
-				} else
-					return false;
-				break;
-			case XKB_KEY_Alt_L:
-				return true;
-			case XKB_KEY_F5:
-				anthy_input_map_select(seat->input_context, ANTHY_INPUT_MAP_HIRAGANA);
-				break;
-			case XKB_KEY_F6:
-				anthy_input_map_select(seat->input_context, ANTHY_INPUT_MAP_KATAKANA);
-				break;
-			case XKB_KEY_F7:
-				anthy_input_map_select(seat->input_context, ANTHY_INPUT_MAP_ALPHABET);
-				break;
-			case XKB_KEY_F8:
-				anthy_input_map_select(seat->input_context, ANTHY_INPUT_MAP_WALPHABET);
-				break;
-			default:
-				return false;
-			}
-		} */
 	}
+
 	/*
 	 * At this point the key has been handled by anthy
 	 */
 	char name[64];
 	xkb_keysym_get_name(sym, name, 64);
-	log_line(LV_DEBUG, "state: %d, map: %d", state, map);
 	log_line(LV_DEBUG, "pressed %s", name);
-/*	anthy_context_t ac;
-	if ((ac = anthy_input_get_anthy_context(seat->input_context)))
-		anthy_print_context(ac);*/
 
-	struct anthy_input_preedit *pe = anthy_input_get_preedit(seat->input_context);
-
-	//if (pe->commit) {
-	//	//char *commit_str = iconv_code_conv(seat->conv_desc, pe->commit);
-    //    char *commit_str = pe->commit;
-	//	log_line(LV_DEBUG, "%s", commit_str);
-	//	zwp_input_method_v2_commit_string(seat->input_method, commit_str);
-	//	//free(commit_str);
-	//zwp_input_method_v2_commit(seat->input_method, seat->serial);
-	//return true;
-	//}
-
-	//char preedit_str[PREEDIT_BUFSIZE]; preedit_str[0] = '\0';
-	//int totlen = 0;
-	//int begin = 0;
-	//int end = 0;
-	//log_head(LV_DEBUG);
-	//log_body(LV_DEBUG, "|");
-	//for (struct anthy_input_segment* cur = pe->segment; cur != NULL &&
-	//	 cur->str != NULL; cur = cur->next) {
-	//	//char *utf8_str = iconv_code_conv(seat->conv_desc, cur->str);
-    //    char *utf8_str = cur->str;
-	//	size_t len = strlen(utf8_str);
-	//	if (cur == pe->cur_segment) {
-	//		begin = totlen;
-	//		end = totlen+len;
-	//		log_body(LV_DEBUG, "*");
-	//	}
-	//	totlen += len;
-	//	log_body(LV_DEBUG, "%s|", utf8_str);
-	//	if (PREEDIT_BUFSIZE-totlen-1 > 0)
-	//		strcat(preedit_str, utf8_str);
-	//	//free(utf8_str);
-	//}
-	//log_tail(LV_DEBUG);
-	//anthy_input_free_preedit(pe);
 	return true;
 }
 
