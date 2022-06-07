@@ -206,7 +206,7 @@ void update_preedit_buffer_conversion(struct wlanthy_im_state *im_state) {
     }
 }
 
-im_state start_conversion(struct wlanthy_im_state *im_state) {
+void start_conversion(struct wlanthy_im_state *im_state) {
     if (im_state->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
         log_line(LV_DEBUG, "already in convert mode, refusing to start conversion");
         return;
@@ -252,16 +252,40 @@ void stop_conversion_no_commit(struct wlanthy_im_state *im_state) {
     im_state->input_mode = WLANTHY_INPUT_MODE_EDIT;
 }
 
+void conversion_next_candidate(struct wlanthy_im_state *im_state) {
+    if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+        log_line(LV_DEBUG, "not in conversion mode: can't select next candidate");
+        return;
+    }
+
+    struct anthy_segment_stat segment_stat;
+
+    anthy_get_segment_stat(
+        im_state->conversion_context,
+        im_state->conversion_current_segment,
+        &segment_stat);
+
+    int *current_segment_index =
+        &im_state->conversion_segment_indices[im_state->conversion_current_segment];
+
+    *current_segment_index =
+        (*current_segment_index + 1 + segment_stat.nr_candidate) % segment_stat.nr_candidate;
+
+    log_line(LV_DEBUG, "selecting candidate number %i for segment %i", *current_segment_index, im_state->conversion_current_segment);
+
+    update_preedit_buffer_conversion(im_state);
+}
+
 void write_key(struct wlanthy_seat *seat) {
 
     log_line(LV_DEBUG, "writing key!");
 
-    if (seat->current_key != XKB_KEYCODE_MAX + 1) {
-        enum wlanthy_shift_key shift_key = seat->current_shift_key;
+    if (seat->im_state.current_key != XKB_KEYCODE_MAX + 1) {
+        enum wlanthy_shift_key shift_key = seat->im_state.current_shift_key;
 
-        log_line(LV_DEBUG, "%d", seat->current_key);
+        log_line(LV_DEBUG, "%d", seat->im_state.current_key);
         log_line(LV_DEBUG, "%d", NO_KEY);
-        const char *keycode_name = xkb_keymap_key_get_name(seat->xkb_keymap, seat->current_key);
+        const char *keycode_name = xkb_keymap_key_get_name(seat->xkb_keymap, seat->im_state.current_key);
         size_t column = strtol(&keycode_name[2], NULL, 10);
         column -= 1;
 
@@ -300,18 +324,19 @@ void write_key(struct wlanthy_seat *seat) {
             return;
         }
 
-        strcat(seat->preedit_buffer, character);
+        strcat(seat->im_state.preedit_buffer, character);
     }
 
-    else if (seat->current_shift_key != WLANTHY_NO_SHIFT) {
+    else if (seat->im_state.current_shift_key != WLANTHY_NO_SHIFT) {
         log_line(LV_DEBUG, "shift key action!");
 
-        if (seat->current_shift_key == WLANTHY_SAME_SHIFT) {
+        if (seat->im_state.current_shift_key == WLANTHY_SAME_SHIFT) {
             // i'm treating this as henkan
-            if (seat->input_mode == WLANTHY_INPUT_MODE_EDIT) {
-                start_conversion(seat);
+            if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_EDIT) {
+                start_conversion(&seat->im_state);
             }
             else {
+                conversion_next_candidate(&seat->im_state);
             }
         }
 
@@ -319,8 +344,8 @@ void write_key(struct wlanthy_seat *seat) {
 
     // TODO: handle space (henkan/muhenkan)
 
-    seat->current_key = XKB_KEYCODE_MAX + 1;
-    seat->current_shift_key = WLANTHY_NO_SHIFT;
+    seat->im_state.current_key = XKB_KEYCODE_MAX + 1;
+    seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
     //stop_timer();
     send_preedit_buffer(seat, false);
 }
@@ -366,29 +391,29 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
 			if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 				log_line(LV_DEBUG, "key pressed: %s", keycode_name);
-				if (seat->current_key != XKB_KEYCODE_MAX + 1) {
+				if (seat->im_state.current_key != XKB_KEYCODE_MAX + 1) {
 					log_line(LV_DEBUG, "... replacing current key");
                     // since this is replacing the currently pressed key,
                     // we write that one immediately
                     write_key(seat);
-                    seat->current_key = xkb_key; 
+                    seat->im_state.current_key = xkb_key; 
                     start_timer(seat, THUMB_TIMEOUT_2); // this is t2 in ibus-anthy (i think), i.e. the shorter of the two
 				}
-                else if (seat->current_shift_key != WLANTHY_NO_SHIFT) {
+                else if (seat->im_state.current_shift_key != WLANTHY_NO_SHIFT) {
                     // a space key is already pressed, so we can write
                     // immediately. note that this is mutually exclusive
                     // with the first case, since whenever a key and a space
                     // key are pressed simultaneously, they are written
                     // immediately and then reset.
-                    seat->current_key = xkb_key; 
+                    seat->im_state.current_key = xkb_key; 
                     write_key(seat);
                 }
                 else {
-                    seat->current_key = xkb_key; 
+                    seat->im_state.current_key = xkb_key; 
                     start_timer(seat, THUMB_TIMEOUT_2);
                 }
 			} else if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-				if (xkb_key == seat->current_key) {
+				if (xkb_key == seat->im_state.current_key) {
 					log_line(LV_DEBUG, "current key released: %s", keycode_name);
 
                     write_key(seat);
@@ -398,7 +423,7 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
 		else if (strcmp(keycode_name, "SPCE") == 0) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-                if (seat->current_shift_key == WLANTHY_SAME_SHIFT) {
+                if (seat->im_state.current_shift_key == WLANTHY_SAME_SHIFT) {
                     write_key(seat);
                 }
 			}
@@ -406,12 +431,12 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
                 // TODO: handle shift key replace
                 // (press other shift key, this becomes the new shift key
                 // and commits the action of the old one)
-                seat->current_shift_key = WLANTHY_SAME_SHIFT;
-                if (seat->current_key != NO_KEY) {
+                seat->im_state.current_shift_key = WLANTHY_SAME_SHIFT;
+                if (seat->im_state.current_key != NO_KEY) {
                     write_key(seat);
                 }
                 else {
-                    seat->current_shift_key = WLANTHY_SAME_SHIFT;
+                    seat->im_state.current_shift_key = WLANTHY_SAME_SHIFT;
                     start_timer(seat, THUMB_TIMEOUT_1); // this is t1 in ibus-anthy, i.e. the longer of the two
                 }
 			}
@@ -419,13 +444,13 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
 		else if ((strcmp(keycode_name, "LALT") == 0) || (strcmp(keycode_name, "RALT") == 0)) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-                if (seat->current_shift_key == WLANTHY_CROSS_SHIFT) {
-                    seat->current_shift_key = WLANTHY_NO_SHIFT;
+                if (seat->im_state.current_shift_key == WLANTHY_CROSS_SHIFT) {
+                    seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
                 }
 			}
 			else {
-                seat->current_shift_key = WLANTHY_CROSS_SHIFT;
-                if (seat->current_key != NO_KEY) {
+                seat->im_state.current_shift_key = WLANTHY_CROSS_SHIFT;
+                if (seat->im_state.current_key != NO_KEY) {
                     write_key(seat);
                 }
                 else {
@@ -435,7 +460,7 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		}
 
 		else if (strcmp(keycode_name, "RTRN") == 0) {
-			if (strlen(seat->preedit_buffer) == 0) {
+			if (strlen(seat->im_state.preedit_buffer) == 0) {
 				return false;
 			}
             send_preedit_buffer(seat, true);
@@ -444,33 +469,33 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
         else if (strcmp(keycode_name, "BKSP") == 0) {
             if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 
-                if (seat->input_mode == WLANTHY_INPUT_MODE_EDIT) {
-                    size_t preedit_buffer_len = strlen(seat->preedit_buffer);
+                if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_EDIT) {
+                    size_t preedit_buffer_len = strlen(seat->im_state.preedit_buffer);
 
                     log_line(LV_DEBUG, "deleting; preedit buffer length in bytes: %d", preedit_buffer_len);
 
                     if (preedit_buffer_len >= 1) {
-                        uint8_t last_char = seat->preedit_buffer[preedit_buffer_len - 1];
+                        uint8_t last_char = seat->im_state.preedit_buffer[preedit_buffer_len - 1];
 
                         if (last_char < 0x80) {
                             // single-byte encoding
-                            seat->preedit_buffer[preedit_buffer_len - 1] = 0;
+                            seat->im_state.preedit_buffer[preedit_buffer_len - 1] = 0;
                         }
 
                         else if (last_char > 0xA0) {
                             // two-byte encoding
-                            seat->preedit_buffer[preedit_buffer_len - 1] = 0;
-                            seat->preedit_buffer[preedit_buffer_len - 2] = 0;
+                            seat->im_state.preedit_buffer[preedit_buffer_len - 1] = 0;
+                            seat->im_state.preedit_buffer[preedit_buffer_len - 2] = 0;
                         }
 
-                        log_line(LV_DEBUG, "deleted; preedit buffer length in bytes: %d", strlen(seat->preedit_buffer));
+                        log_line(LV_DEBUG, "deleted; preedit buffer length in bytes: %d", strlen(seat->im_state.preedit_buffer));
                     }
                     else {
                         return false;
                     }
                 } 
-                else if (seat->input_mode == WLANTHY_INPUT_MODE_CONVERT) {
-                    stop_conversion_no_commit(seat);
+                else if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+                    stop_conversion_no_commit(&seat->im_state);
                 }
 
                 send_preedit_buffer(seat, false);
@@ -492,7 +517,7 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 				sym &= ~(1 << 5);
 			case XKB_KEY_A ... XKB_KEY_Z:
 				index = sym - 0x41;
-				//strcat(seat->preedit_buffer, thumb_keys_leftshift[index]);
+				//strcat(seat->im_state.preedit_buffer, thumb_keys_leftshift[index]);
 				break;
 			//case XKB_KEY_exclam ... XKB_KEY_asciitilde:;
 			//	uint32_t ch = xkb_state_key_get_utf32(seat->xkb_state, xkb_key);
@@ -759,9 +784,9 @@ static void handle_done(void *data, struct zwp_input_method_v2 *input_method) {
 		// reset state
 		anthy_input_free_context(seat->input_context);
 		seat->input_context = anthy_input_create_context(seat->input_config);
-		seat->preedit_buffer[0] = 0;
-		seat->current_key = NO_KEY;
-        seat->current_shift_key = WLANTHY_NO_SHIFT;
+		seat->im_state.preedit_buffer[0] = 0;
+		seat->im_state.current_key = NO_KEY;
+        seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
 
 		memset(seat->pressed, 0, sizeof(seat->pressed));
 

@@ -45,7 +45,7 @@ struct wlanthy_im_state {
     int conversion_segment_indices[SEGMENT_BUFSIZE];
     int conversion_num_segments;
     int conversion_current_segment;
-}
+};
 
 struct wlanthy_seat {
 	struct wl_list link;
