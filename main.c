@@ -482,17 +482,13 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
                     log_line(LV_DEBUG, "deleting; preedit buffer length in bytes: %d", preedit_buffer_len);
 
                     if (preedit_buffer_len >= 1) {
-                        uint8_t last_char = seat->im_state.preedit_buffer[preedit_buffer_len - 1];
+                        size_t pos = preedit_buffer_len - 1;
 
-                        if (last_char < 0x80) {
-                            // single-byte encoding
-                            seat->im_state.preedit_buffer[preedit_buffer_len - 1] = 0;
-                        }
-
-                        else if (last_char > 0xA0) {
-                            // two-byte encoding
-                            seat->im_state.preedit_buffer[preedit_buffer_len - 1] = 0;
-                            seat->im_state.preedit_buffer[preedit_buffer_len - 2] = 0;
+                        while ((pos--) > 0) {
+                            if (((unsigned char) seat->im_state.preedit_buffer[pos] >> 6) != 2) {
+                                seat->im_state.preedit_buffer[pos] = 0;
+                                break;
+                            }
                         }
 
                         log_line(LV_DEBUG, "deleted; preedit buffer length in bytes: %d", strlen(seat->im_state.preedit_buffer));
