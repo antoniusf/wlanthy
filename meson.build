@@ -20,8 +20,8 @@ add_project_arguments(cc.get_supported_arguments([
 
 wlanthy_inc = include_directories('include')
 
-anthy = dependency('anthy')
-anthyinput = cc.find_library('anthyinput')
+anthy = dependency('anthy-unicode')
+anthyinput = cc.find_library('anthyinput-unicode')
 wayland_client = dependency('wayland-client')
 wayland_protocols = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')

@@ -38,6 +38,9 @@ struct wlanthy_im_state {
     enum wlanthy_input_mode input_mode;
 
 	char *preedit_buffer; // zero-terminated, bc apparently that's what everyone does here
+    int preedit_cursor_start;
+    int preedit_cursor_end;
+
 	xkb_keycode_t current_key;
     enum wlanthy_shift_key current_shift_key;
 

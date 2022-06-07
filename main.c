@@ -19,127 +19,121 @@
 #define THUMB_TIMEOUT_1 100
 #define THUMB_TIMEOUT_2 75
 
-const char thumb_keys_noshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa1, 0xa3, 0},
-	{ 0xa4, 0xab, 0},
-	{ 0xa4, 0xbf, 0},
-	{ 0xa4, 0xb3, 0},
-	{ 0xa4, 0xb5, 0},
-	{ 0xa4, 0xe9, 0},
-	{ 0xa4, 0xc1, 0},
-	{ 0xa4, 0xaf, 0},
-	{ 0xa4, 0xc4, 0},
-	{ 0x2c, 0, 0},
-	{ 0xa1, 0xa2, 0}
+const char thumb_keys_noshift_row_d[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x80, 0x82, 0},
+    { 0xe3, 0x81, 0x8b, 0},
+    { 0xe3, 0x81, 0x9f, 0},
+    { 0xe3, 0x81, 0x93, 0},
+    { 0xe3, 0x81, 0x95, 0},
+    { 0xe3, 0x82, 0x89, 0},
+    { 0xe3, 0x81, 0xa1, 0},
+    { 0xe3, 0x81, 0x8f, 0},
+    { 0xe3, 0x81, 0xa4, 0},
+    { 0x2c, 0, 0, 0},
+    { 0xe3, 0x80, 0x81, 0}
 };
 
-const char thumb_keys_noshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xa6, 0},
-	{ 0xa4, 0xb7, 0},
-	{ 0xa4, 0xc6, 0},
-	{ 0xa4, 0xb1, 0},
-	{ 0xa4, 0xbb, 0},
-	{ 0xa4, 0xcf, 0},
-	{ 0xa4, 0xc8, 0},
-	{ 0xa4, 0xad, 0},
-	{ 0xa4, 0xa4, 0},
-	{ 0xa4, 0xf3, 0}
+const char thumb_keys_noshift_row_c[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x81, 0x86, 0},
+    { 0xe3, 0x81, 0x97, 0},
+    { 0xe3, 0x81, 0xa6, 0},
+    { 0xe3, 0x81, 0x91, 0},
+    { 0xe3, 0x81, 0x9b, 0},
+    { 0xe3, 0x81, 0xaf, 0},
+    { 0xe3, 0x81, 0xa8, 0},
+    { 0xe3, 0x81, 0x8d, 0},
+    { 0xe3, 0x81, 0x84, 0},
+    { 0xe3, 0x82, 0x93, 0}
 };
 
-const char thumb_keys_noshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
+const char thumb_keys_noshift_row_b[THUMB_KEYMAP_ROW_LENGTH][4] = {
 
-	{ 0x2e, 0, 0},
-	{ 0xa4, 0xd2, 0},
-	{ 0xa4, 0xb9, 0},
-	{ 0xa4, 0xd5, 0},
-	{ 0xa4, 0xd8, 0},
-	{ 0xa4, 0xe1, 0},
-	{ 0xa4, 0xbd, 0},
-	{ 0xa4, 0xcd, 0},
-	{ 0xa4, 0xdb, 0},
-	{ 0xa1, 0xa6, 0},
+    { 0x2e, 0, 0, 0},
+    { 0xe3, 0x81, 0xb2, 0},
+    { 0xe3, 0x81, 0x99, 0},
+    { 0xe3, 0x81, 0xb5, 0},
+    { 0xe3, 0x81, 0xb8, 0},
+    { 0xe3, 0x82, 0x81, 0},
+    { 0xe3, 0x81, 0x9d, 0},
+    { 0xe3, 0x81, 0xad, 0},
+    { 0xe3, 0x81, 0xbb, 0},
+    { 0xe3, 0x83, 0xbb, 0}
 };
 
-const char thumb_keys_sameshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xa1, 0},
-	{ 0xa4, 0xa8, 0},
-	{ 0xa4, 0xea, 0},
-	{ 0xa4, 0xe3, 0},
-	{ 0xa4, 0xec, 0},
-
-	{ 0xa4, 0xe8, 0},
-	{ 0xa4, 0xcb, 0},
-	{ 0xa4, 0xeb, 0},
-	{ 0xa4, 0xde, 0},
-	{ 0xa4, 0xa7, 0},
+const char thumb_keys_sameshift_row_d[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x81, 0x81, 0},
+    { 0xe3, 0x81, 0x88, 0},
+    { 0xe3, 0x82, 0x8a, 0},
+    { 0xe3, 0x82, 0x83, 0},
+    { 0xe3, 0x82, 0x8c, 0},
+    { 0xe3, 0x82, 0x88, 0},
+    { 0xe3, 0x81, 0xab, 0},
+    { 0xe3, 0x82, 0x8b, 0},
+    { 0xe3, 0x81, 0xbe, 0},
+    { 0xe3, 0x81, 0x87, 0}
 };
 
-const char thumb_keys_sameshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xf2, 0},
-	{ 0xa4, 0xa2, 0},
-	{ 0xa4, 0xca, 0},
-	{ 0xa4, 0xe5, 0},
-	{ 0xa4, 0xe2, 0},
-
-	{ 0xa4, 0xdf, 0},
-	{ 0xa4, 0xaa, 0},
-	{ 0xa4, 0xce, 0},
-	{ 0xa4, 0xe7, 0},
-	{ 0xa4, 0xc3, 0},
+const char thumb_keys_sameshift_row_c[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x82, 0x92, 0},
+    { 0xe3, 0x81, 0x82, 0},
+    { 0xe3, 0x81, 0xaa, 0},
+    { 0xe3, 0x82, 0x85, 0},
+    { 0xe3, 0x82, 0x82, 0},
+    { 0xe3, 0x81, 0xbf, 0},
+    { 0xe3, 0x81, 0x8a, 0},
+    { 0xe3, 0x81, 0xae, 0},
+    { 0xe3, 0x82, 0x87, 0},
+    { 0xe3, 0x81, 0xa3, 0}
 };
 
-const char thumb_keys_sameshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0xa4, 0xa5, 0},
-	{ 0xa1, 0xbc, 0},
-	{ 0xa4, 0xed, 0},
-	{ 0xa4, 0xe4, 0},
-	{ 0xa4, 0xa3, 0},
-
-	{ 0xa4, 0xcc, 0},
-	{ 0xa4, 0xe6, 0},
-	{ 0xa4, 0xe0, 0},
-	{ 0xa4, 0xef, 0},
-	{ 0xa4, 0xa9, 0},
+const char thumb_keys_sameshift_row_b[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x81, 0x85, 0},
+    { 0xe3, 0x83, 0xbc, 0},
+    { 0xe3, 0x82, 0x8d, 0},
+    { 0xe3, 0x82, 0x84, 0},
+    { 0xe3, 0x81, 0x83, 0},
+    { 0xe3, 0x81, 0xac, 0},
+    { 0xe3, 0x82, 0x86, 0},
+    { 0xe3, 0x82, 0x80, 0},
+    { 0xe3, 0x82, 0x8f, 0},
+    { 0xe3, 0x81, 0x89, 0}
 };
 
-const char thumb_keys_crossshift_row_d[THUMB_KEYMAP_ROW_LENGTH][3] = {
+const char thumb_keys_crossshift_row_d[THUMB_KEYMAP_ROW_LENGTH][4] = {
+	{ 0, 0, 0, 0},  // no cross-shift action
+    { 0xe3, 0x81, 0x8c, 0},
+    { 0xe3, 0x81, 0xa0, 0},
+    { 0xe3, 0x81, 0x94, 0},
+    { 0xe3, 0x81, 0x96, 0},
+    { 0xe3, 0x81, 0xb1, 0},
+    { 0xe3, 0x81, 0xa2, 0},
+    { 0xe3, 0x81, 0x90, 0},
+    { 0xe3, 0x81, 0xa5, 0},
+    { 0xe3, 0x81, 0xb4, 0}
+};
+
+const char thumb_keys_crossshift_row_c[THUMB_KEYMAP_ROW_LENGTH][4] = {
+    { 0xe3, 0x82, 0x94, 0}, // note: this is u with dakuten, which was not possible to represent with previous anthy (not in euc-jp. might make bugs?
+    { 0xe3, 0x81, 0x98, 0},
+    { 0xe3, 0x81, 0xa7, 0},
+    { 0xe3, 0x81, 0x92, 0},
+    { 0xe3, 0x81, 0x9c, 0},
+    { 0xe3, 0x81, 0xb0, 0},
+    { 0xe3, 0x81, 0xa9, 0},
+    { 0xe3, 0x81, 0x8e, 0},
+    { 0xe3, 0x81, 0xbd, 0}
+};
+
+const char thumb_keys_crossshift_row_b[THUMB_KEYMAP_ROW_LENGTH][4] = {
 	{ 0, 0, 0},  // no cross-shift action
-	{ 0xa4, 0xac, 0},
-	{ 0xa4, 0xc0, 0},
-	{ 0xa4, 0xb4, 0},
-	{ 0xa4, 0xb6, 0},
-
-	{ 0xa4, 0xd1, 0},
-	{ 0xa4, 0xc2, 0},
-	{ 0xa4, 0xb0, 0},
-	{ 0xa4, 0xc5, 0},
-	{ 0xa4, 0xd4, 0}
-};
-
-const char thumb_keys_crossshift_row_c[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0, 0, 0 }, // this would be "u" but with dakuten, which is not contained in jis x 0208 and thus (afaict) also not in euc-jp?
-	{ 0xa4, 0xb8, 0},
-	{ 0xa4, 0xc7, 0},
-	{ 0xa4, 0xb2, 0},
-	{ 0xa4, 0xbc, 0},
-
-	{ 0xa4, 0xd0, 0},
-	{ 0xa4, 0xc9, 0},
-	{ 0xa4, 0xae, 0},
-	{ 0xa4, 0xdd, 0}
-};
-
-const char thumb_keys_crossshift_row_b[THUMB_KEYMAP_ROW_LENGTH][3] = {
-	{ 0, 0, 0},  // no cross-shift action
-	{ 0xa4, 0xd3, 0},
-	{ 0xa4, 0xba, 0},
-	{ 0xa4, 0xd6, 0},
-	{ 0xa4, 0xd9, 0},
-
-	{ 0xa4, 0xd7, 0},
-	{ 0xa4, 0xbe, 0},
-	{ 0xa4, 0xda, 0},
-	{ 0xa4, 0xdc, 0}
+    { 0xe3, 0x81, 0xb3, 0},
+    { 0xe3, 0x81, 0x9a, 0},
+    { 0xe3, 0x81, 0xb6, 0},
+    { 0xe3, 0x81, 0xb9, 0},
+    { 0xe3, 0x81, 0xb7, 0},
+    { 0xe3, 0x81, 0x9e, 0},
+    { 0xe3, 0x81, 0xba, 0},
+    { 0xe3, 0x81, 0xbc, 0}
 };
 
 // timeout is given in milliseconds
@@ -167,21 +161,26 @@ void stop_timer(struct wlanthy_seat *seat) {
 // commit: if true, send the preedit buffer as commit text. then, clear it.
 void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 
-	char *utf8_str = iconv_code_conv(seat->conv_desc, seat->im_state.preedit_buffer);
+    //char *utf8_str = iconv_code_conv(seat->conv_desc, seat->im_state.preedit_buffer);
+    char *utf8_str = seat->im_state.preedit_buffer;
 	log_line(LV_DEBUG, "%s", utf8_str);
 
 	if (commit) {
 		seat->im_state.preedit_buffer[0] = 0;
         seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
+        seat->im_state.preedit_cursor_start = 0;
+        seat->im_state.preedit_cursor_end = 0;
+
 		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
 	}
 	else {
+        log_line(LV_DEBUG, "cursor start: %i, cursor end: %i", seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end);
 		zwp_input_method_v2_set_preedit_string(seat->input_method,
-	utf8_str, 0, 0); // todo: the 0, 0 is a cursor position, make that better
+	utf8_str, seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end); // todo: the 0, 0 is a cursor position, make that better
 	}
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
 
-	free(utf8_str);
+	//free(utf8_str);
 }
 
 void update_preedit_buffer_conversion(struct wlanthy_im_state *im_state) {
@@ -203,6 +202,11 @@ void update_preedit_buffer_conversion(struct wlanthy_im_state *im_state) {
         else {
             log_line(LV_DEBUG, "anthy returned a conversion error");
         }
+
+        if (i == im_state->conversion_current_segment) {
+            im_state->preedit_cursor_start = buffer_write_pos - chars_written;
+            im_state->preedit_cursor_end = buffer_write_pos;
+        }
     }
 }
 
@@ -218,6 +222,7 @@ void start_conversion(struct wlanthy_im_state *im_state) {
     }
 
     im_state->conversion_context = anthy_create_context();
+    anthy_context_set_encoding(im_state->conversion_context, ANTHY_UTF8_ENCODING);
     anthy_set_string(im_state->conversion_context, im_state->preedit_buffer);
     struct anthy_conv_stat conv_stat;
     anthy_get_stat(im_state->conversion_context, &conv_stat);
@@ -250,6 +255,8 @@ void stop_conversion_no_commit(struct wlanthy_im_state *im_state) {
     anthy_release_context(im_state->conversion_context);
     im_state->conversion_context = NULL;
     im_state->input_mode = WLANTHY_INPUT_MODE_EDIT;
+    im_state->preedit_cursor_start = 0;
+    im_state->preedit_cursor_end = 0;
 }
 
 void conversion_next_candidate(struct wlanthy_im_state *im_state) {
@@ -591,38 +598,40 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 
 	struct anthy_input_preedit *pe = anthy_input_get_preedit(seat->input_context);
 
-	if (pe->commit) {
-		char *commit_str = iconv_code_conv(seat->conv_desc, pe->commit);
-		log_line(LV_DEBUG, "%s", commit_str);
-		zwp_input_method_v2_commit_string(seat->input_method, commit_str);
-		free(commit_str);
-	zwp_input_method_v2_commit(seat->input_method, seat->serial);
-	return true;
-	}
+	//if (pe->commit) {
+	//	//char *commit_str = iconv_code_conv(seat->conv_desc, pe->commit);
+    //    char *commit_str = pe->commit;
+	//	log_line(LV_DEBUG, "%s", commit_str);
+	//	zwp_input_method_v2_commit_string(seat->input_method, commit_str);
+	//	//free(commit_str);
+	//zwp_input_method_v2_commit(seat->input_method, seat->serial);
+	//return true;
+	//}
 
-	char preedit_str[PREEDIT_BUFSIZE]; preedit_str[0] = '\0';
-	int totlen = 0;
-	int begin = 0;
-	int end = 0;
-	log_head(LV_DEBUG);
-	log_body(LV_DEBUG, "|");
-	for (struct anthy_input_segment* cur = pe->segment; cur != NULL &&
-		 cur->str != NULL; cur = cur->next) {
-		char *utf8_str = iconv_code_conv(seat->conv_desc, cur->str);
-		size_t len = strlen(utf8_str);
-		if (cur == pe->cur_segment) {
-			begin = totlen;
-			end = totlen+len;
-			log_body(LV_DEBUG, "*");
-		}
-		totlen += len;
-		log_body(LV_DEBUG, "%s|", utf8_str);
-		if (PREEDIT_BUFSIZE-totlen-1 > 0)
-			strcat(preedit_str, utf8_str);
-		free(utf8_str);
-	}
-	log_tail(LV_DEBUG);
-	anthy_input_free_preedit(pe);
+	//char preedit_str[PREEDIT_BUFSIZE]; preedit_str[0] = '\0';
+	//int totlen = 0;
+	//int begin = 0;
+	//int end = 0;
+	//log_head(LV_DEBUG);
+	//log_body(LV_DEBUG, "|");
+	//for (struct anthy_input_segment* cur = pe->segment; cur != NULL &&
+	//	 cur->str != NULL; cur = cur->next) {
+	//	//char *utf8_str = iconv_code_conv(seat->conv_desc, cur->str);
+    //    char *utf8_str = cur->str;
+	//	size_t len = strlen(utf8_str);
+	//	if (cur == pe->cur_segment) {
+	//		begin = totlen;
+	//		end = totlen+len;
+	//		log_body(LV_DEBUG, "*");
+	//	}
+	//	totlen += len;
+	//	log_body(LV_DEBUG, "%s|", utf8_str);
+	//	if (PREEDIT_BUFSIZE-totlen-1 > 0)
+	//		strcat(preedit_str, utf8_str);
+	//	//free(utf8_str);
+	//}
+	//log_tail(LV_DEBUG);
+	//anthy_input_free_preedit(pe);
 	return true;
 }
 
@@ -936,6 +945,8 @@ int main(int argc, char *argv[]) {
         seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
 		seat->im_state.preedit_buffer = malloc(PREEDIT_BUFSIZE);
 		seat->im_state.preedit_buffer[0] = 0;
+        seat->im_state.preedit_cursor_start = 0;
+        seat->im_state.preedit_cursor_end = 0;
 		seat->im_state.current_key = NO_KEY;
         seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
 

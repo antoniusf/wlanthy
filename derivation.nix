@@ -1,4 +1,4 @@
-{ lib, stdenv, cmake, meson, ninja, pkg-config, anthy, wayland, wayland-protocols, libxkbcommon }:
+{ lib, stdenv, cmake, meson, ninja, pkg-config, anthy, wayland, wayland-protocols, libxkbcommon, anthy-unicode }:
 
 stdenv.mkDerivation {
   name = "wlanthy-oyayubi";
@@ -9,5 +9,5 @@ stdenv.mkDerivation {
   #};
   src = ./.;
 
-  buildInputs = [ meson ninja cmake pkg-config anthy wayland wayland-protocols libxkbcommon ];
+  buildInputs = [ meson ninja cmake pkg-config anthy-unicode wayland wayland-protocols libxkbcommon ];
 }
