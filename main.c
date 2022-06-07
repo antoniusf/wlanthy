@@ -285,6 +285,39 @@ void conversion_change_candidate(struct wlanthy_im_state *im_state, int next) {
     update_preedit_buffer_conversion(im_state);
 }
 
+void conversion_change_segment(struct wlanthy_im_state *im_state, int direction) {
+    if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+        log_line(LV_DEBUG, "not in conversion mode: can't change segment");
+        return;
+    }
+
+    int delta = (direction > 0) ? 1 : -1;
+    im_state->conversion_current_segment += delta;
+
+    if (im_state->conversion_current_segment < 0) {
+        im_state->conversion_current_segment = 0;
+    }
+
+    if (im_state->conversion_current_segment >= im_state->conversion_num_segments) {
+        im_state->conversion_current_segment = im_state->conversion_num_segments - 1;
+    }
+
+    log_line(LV_DEBUG, "segment %i selected", im_state->conversion_current_segment);
+
+    update_preedit_buffer_conversion(im_state);
+}
+
+void conversion_resize_segment(struct wlanthy_im_state *im_state, int amount) {
+    if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
+        log_line(LV_DEBUG, "not in conversion mode: can't resize segment");
+        return;
+    }
+
+    anthy_resize_segment(im_state->conversion_context, im_state->conversion_current_segment, amount);
+
+    update_preedit_buffer_conversion(im_state);
+}
+
 void write_key(struct wlanthy_seat *seat) {
 
     log_line(LV_DEBUG, "writing key!");
@@ -378,7 +411,6 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 	int map = anthy_input_get_selected_map(seat->input_context);
 
 	xkb_keysym_t sym = xkb_state_key_get_one_sym(seat->xkb_state, xkb_key);
-
 	bool do_commit = false;
 
 	if (sym == seat->state->toggle_key) {
@@ -459,6 +491,60 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
                 }
 			}
 		}
+
+        else if (strcmp(keycode_name, "TAB") == 0) {
+            if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+                if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+                    if (xkb_state_mod_name_is_active(
+                            seat->xkb_state,
+                            XKB_MOD_NAME_SHIFT,
+                            XKB_STATE_MODS_EFFECTIVE) > 0) {
+
+                        conversion_change_segment(&seat->im_state, 0);
+                    }
+                    else {
+                        conversion_change_segment(&seat->im_state, 1);
+                    }
+                    send_preedit_buffer(seat, false);
+                }
+            }
+        }
+
+        else if (strcmp(keycode_name, "LEFT") == 0) {
+            if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+                if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+                    if (xkb_state_mod_name_is_active(
+                            seat->xkb_state,
+                            XKB_MOD_NAME_SHIFT,
+                            XKB_STATE_MODS_EFFECTIVE) > 0) {
+
+                        conversion_resize_segment(&seat->im_state, -1);
+                    }
+                    else {
+                        conversion_change_segment(&seat->im_state, 0);
+                    }
+                    send_preedit_buffer(seat, false);
+                }
+            }
+        }
+
+        else if (strcmp(keycode_name, "RGHT") == 0) {
+            if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+                if (seat->im_state.input_mode == WLANTHY_INPUT_MODE_CONVERT) {
+                    if (xkb_state_mod_name_is_active(
+                            seat->xkb_state,
+                            XKB_MOD_NAME_SHIFT,
+                            XKB_STATE_MODS_EFFECTIVE) > 0) {
+
+                        conversion_resize_segment(&seat->im_state, 1);
+                    }
+                    else {
+                        conversion_change_segment(&seat->im_state, 1);
+                    }
+                    send_preedit_buffer(seat, false);
+                }
+            }
+        }
 
 		else if ((strcmp(keycode_name, "LALT") == 0) || (strcmp(keycode_name, "RALT") == 0)) {
 			if (key_state == WL_KEYBOARD_KEY_STATE_RELEASED) {
