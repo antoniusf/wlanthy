@@ -259,11 +259,13 @@ void stop_conversion_no_commit(struct wlanthy_im_state *im_state) {
     im_state->preedit_cursor_end = 0;
 }
 
-void conversion_next_candidate(struct wlanthy_im_state *im_state) {
+void conversion_change_candidate(struct wlanthy_im_state *im_state, int next) {
     if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
         log_line(LV_DEBUG, "not in conversion mode: can't select next candidate");
         return;
     }
+
+    int delta = next ? 1 : -1;
 
     struct anthy_segment_stat segment_stat;
 
@@ -276,7 +278,7 @@ void conversion_next_candidate(struct wlanthy_im_state *im_state) {
         &im_state->conversion_segment_indices[im_state->conversion_current_segment];
 
     *current_segment_index =
-        (*current_segment_index + 1 + segment_stat.nr_candidate) % segment_stat.nr_candidate;
+        (*current_segment_index + delta + segment_stat.nr_candidate) % segment_stat.nr_candidate;
 
     log_line(LV_DEBUG, "selecting candidate number %i for segment %i", *current_segment_index, im_state->conversion_current_segment);
 
@@ -343,7 +345,16 @@ void write_key(struct wlanthy_seat *seat) {
                 start_conversion(&seat->im_state);
             }
             else {
-                conversion_next_candidate(&seat->im_state);
+                if (xkb_state_mod_name_is_active(
+                        seat->xkb_state,
+                        XKB_MOD_NAME_SHIFT,
+                        XKB_STATE_MODS_EFFECTIVE) > 0) {
+
+                    conversion_change_candidate(&seat->im_state, 0);
+                }
+                else {
+                    conversion_change_candidate(&seat->im_state, 1);
+                }
             }
         }
 
