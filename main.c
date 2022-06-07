@@ -166,12 +166,12 @@ void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 	log_line(LV_DEBUG, "%s", utf8_str);
 
 	if (commit) {
+		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
+
 		seat->im_state.preedit_buffer[0] = 0;
         seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
         seat->im_state.preedit_cursor_start = 0;
         seat->im_state.preedit_cursor_end = 0;
-
-		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
 	}
 	else {
         log_line(LV_DEBUG, "cursor start: %i, cursor end: %i", seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end);
