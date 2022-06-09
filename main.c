@@ -259,6 +259,21 @@ void stop_conversion_no_commit(struct wlanthy_im_state *im_state) {
     im_state->preedit_cursor_end = 0;
 }
 
+void reset_im_state(struct wlanthy_im_state *im_state) {
+    if (im_state->conversion_context) {
+        anthy_release_context(im_state->conversion_context);
+        im_state->conversion_context = NULL;
+    }
+    im_state->input_mode = WLANTHY_INPUT_MODE_EDIT;
+
+    im_state->preedit_buffer[0] = 0;
+    im_state->preedit_cursor_start = 0;
+    im_state->preedit_cursor_end = 0;
+
+    im_state->current_key = NO_KEY;
+    im_state->current_shift_key = WLANTHY_NO_SHIFT;
+}
+
 void conversion_change_candidate(struct wlanthy_im_state *im_state, int next) {
     if (im_state->input_mode != WLANTHY_INPUT_MODE_CONVERT) {
         log_line(LV_DEBUG, "not in conversion mode: can't select next candidate");
@@ -414,8 +429,7 @@ static bool handle_key_anthy(struct wlanthy_seat *seat,
 		seat->enabled = !seat->enabled;
 		if (!seat->enabled) {
 			// reset state
-			anthy_input_free_context(seat->input_context);
-			seat->input_context = anthy_input_create_context(seat->input_config);
+            reset_im_state(&seat->im_state);
 			zwp_input_method_v2_set_preedit_string(seat->input_method, "", 0, 0);
 			zwp_input_method_v2_commit(seat->input_method, seat->serial);
 		}
@@ -773,11 +787,7 @@ static void handle_done(void *data, struct zwp_input_method_v2 *input_method) {
 		zwp_input_method_keyboard_grab_v2_release(seat->keyboard_grab);
 
 		// reset state
-		anthy_input_free_context(seat->input_context);
-		seat->input_context = anthy_input_create_context(seat->input_config);
-		seat->im_state.preedit_buffer[0] = 0;
-		seat->im_state.current_key = NO_KEY;
-        seat->im_state.current_shift_key = WLANTHY_NO_SHIFT;
+        reset_im_state(&seat->im_state);
 
 		memset(seat->pressed, 0, sizeof(seat->pressed));
 
@@ -911,8 +921,6 @@ int main(int argc, char *argv[]) {
 	struct wlanthy_seat *seat;
 	wl_list_for_each(seat, &state.seats, link) {
 		seat->conv_desc = iconv_open("UTF-8", "EUC-JP"); // should be unique...
-		seat->input_config = anthy_input_create_config();
-		seat->input_context = anthy_input_create_context(seat->input_config);
 		seat->input_method = zwp_input_method_manager_v2_get_input_method(
 			state.input_method_manager, seat->wl_seat);
 		zwp_input_method_v2_add_listener(seat->input_method,

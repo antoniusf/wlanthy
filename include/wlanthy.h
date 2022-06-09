@@ -58,8 +58,6 @@ struct wlanthy_seat {
     int timerfd;
 
 	iconv_t conv_desc;
-	struct anthy_input_config *input_config;
-	struct anthy_input_context *input_context;
 	struct zwp_input_method_v2 *input_method;
 	struct zwp_virtual_keyboard_v1 *virtual_keyboard;
     struct wlanthy_im_state im_state;
