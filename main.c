@@ -310,8 +310,11 @@ void conversion_change_segment(struct wlanthy_im_state *im_state, int direction)
         im_state->conversion_current_segment = 0;
     }
 
-    if (im_state->conversion_current_segment >= im_state->conversion_num_segments) {
-        im_state->conversion_current_segment = im_state->conversion_num_segments - 1;
+    int max_size = (SEGMENT_BUFSIZE < im_state->conversion_num_segments) ?
+        SEGMENT_BUFSIZE : im_state->conversion_num_segments;
+
+    if (im_state->conversion_current_segment >= max_size) {
+        im_state->conversion_current_segment = max_size - 1;
     }
 
     log_line(LV_DEBUG, "segment %i selected", im_state->conversion_current_segment);
