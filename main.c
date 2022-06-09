@@ -161,13 +161,12 @@ void stop_timer(struct wlanthy_seat *seat) {
 // commit: if true, send the preedit buffer as commit text. then, clear it.
 void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 
-    //char *utf8_str = iconv_code_conv(seat->conv_desc, seat->im_state.preedit_buffer);
-    char *utf8_str = seat->im_state.preedit_buffer;
-	log_line(LV_DEBUG, "%s", utf8_str);
+	log_line(LV_DEBUG, "%s", seat->im_state.preedit_buffer);
 
 	if (commit) {
-		zwp_input_method_v2_commit_string(seat->input_method, utf8_str);
+		zwp_input_method_v2_commit_string(seat->input_method, seat->im_state.preedit_buffer);
 
+        // now that we've sent the string, we can clear it
 		seat->im_state.preedit_buffer[0] = 0;
         seat->im_state.input_mode = WLANTHY_INPUT_MODE_EDIT;
         seat->im_state.preedit_cursor_start = 0;
@@ -176,11 +175,9 @@ void send_preedit_buffer(struct wlanthy_seat *seat, bool commit) {
 	else {
         log_line(LV_DEBUG, "cursor start: %i, cursor end: %i", seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end);
 		zwp_input_method_v2_set_preedit_string(seat->input_method,
-	utf8_str, seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end); // todo: the 0, 0 is a cursor position, make that better
+	seat->im_state.preedit_buffer, seat->im_state.preedit_cursor_start, seat->im_state.preedit_cursor_end); // todo: the 0, 0 is a cursor position, make that better
 	}
 	zwp_input_method_v2_commit(seat->input_method, seat->serial);
-
-	//free(utf8_str);
 }
 
 void update_preedit_buffer_conversion(struct wlanthy_im_state *im_state) {
@@ -920,7 +917,6 @@ int main(int argc, char *argv[]) {
 
 	struct wlanthy_seat *seat;
 	wl_list_for_each(seat, &state.seats, link) {
-		seat->conv_desc = iconv_open("UTF-8", "EUC-JP"); // should be unique...
 		seat->input_method = zwp_input_method_manager_v2_get_input_method(
 			state.input_method_manager, seat->wl_seat);
 		zwp_input_method_v2_add_listener(seat->input_method,
@@ -988,6 +984,5 @@ int main(int argc, char *argv[]) {
         }
 	}
 
-//	finalize (seat->conv_desc);
 	return 0;
 }
